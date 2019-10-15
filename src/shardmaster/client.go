@@ -1,120 +1,101 @@
 package shardmaster
 
-// 
+//
 // Shardmaster clerk.
-// Please don't change this file.
 //
 
-import "net/rpc"
+import "labrpc"
 import "time"
-import "fmt"
+import "crypto/rand"
+import "math/big"
 
 type Clerk struct {
-  servers []string // shardmaster replicas
+	servers []*labrpc.ClientEnd
+	// Your data here.
 }
 
-func MakeClerk(servers []string) *Clerk {
-  ck := new(Clerk)
-  ck.servers = servers
-  return ck
+func nrand() int64 {
+	max := big.NewInt(int64(1) << 62)
+	bigx, _ := rand.Int(rand.Reader, max)
+	x := bigx.Int64()
+	return x
 }
 
-//
-// call() sends an RPC to the rpcname handler on server srv
-// with arguments args, waits for the reply, and leaves the
-// reply in reply. the reply argument should be a pointer
-// to a reply structure.
-//
-// the return value is true if the server responded, and false
-// if call() was not able to contact the server. in particular,
-// the reply's contents are only valid if call() returned true.
-//
-// you should assume that call() will time out and return an
-// error after a while if it doesn't get a reply from the server.
-//
-// please use call() to send all RPCs, in client.go and server.go.
-// please don't change this function.
-//
-func call(srv string, rpcname string,
-          args interface{}, reply interface{}) bool {
-  c, errx := rpc.Dial("unix", srv)
-  if errx != nil {
-    return false
-  }
-  defer c.Close()
-    
-  err := c.Call(rpcname, args, reply)
-  if err == nil {
-    return true
-  }
-
-  fmt.Println(err)
-  return false
+func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
+	ck := new(Clerk)
+	ck.servers = servers
+	// Your code here.
+	return ck
 }
 
 func (ck *Clerk) Query(num int) Config {
-  for {
-    // try each known server.
-    for _, srv := range ck.servers {
-      args := &QueryArgs{}
-      args.Num = num
-      var reply QueryReply
-      ok := call(srv, "ShardMaster.Query", args, &reply)
-      if ok {
-        return reply.Config
-      }
-    }
-    time.Sleep(100 * time.Millisecond)
-  }
-  return Config{}
+	args := &QueryArgs{}
+	// Your code here.
+	args.Num = num
+	for {
+		// try each known server.
+		for _, srv := range ck.servers {
+			var reply QueryReply
+			ok := srv.Call("ShardMaster.Query", args, &reply)
+			if ok && reply.WrongLeader == false {
+				return reply.Config
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
-func (ck *Clerk) Join(gid int64, servers []string) {
-  for {
-    // try each known server.
-    for _, srv := range ck.servers {
-      args := &JoinArgs{}
-      args.GID = gid
-      args.Servers = servers
-      var reply JoinReply
-      ok := call(srv, "ShardMaster.Join", args, &reply)
-      if ok {
-        return
-      }
-    }
-    time.Sleep(100 * time.Millisecond)
-  }
+func (ck *Clerk) Join(servers map[int][]string) {
+	args := &JoinArgs{}
+	// Your code here.
+	args.Servers = servers
+
+	for {
+		// try each known server.
+		for _, srv := range ck.servers {
+			var reply JoinReply
+			ok := srv.Call("ShardMaster.Join", args, &reply)
+			if ok && reply.WrongLeader == false {
+				return
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
-func (ck *Clerk) Leave(gid int64) {
-  for {
-    // try each known server.
-    for _, srv := range ck.servers {
-      args := &LeaveArgs{}
-      args.GID = gid
-      var reply LeaveReply
-      ok := call(srv, "ShardMaster.Leave", args, &reply)
-      if ok {
-        return
-      }
-    }
-    time.Sleep(100 * time.Millisecond)
-  }
+func (ck *Clerk) Leave(gids []int) {
+	args := &LeaveArgs{}
+	// Your code here.
+	args.GIDs = gids
+
+	for {
+		// try each known server.
+		for _, srv := range ck.servers {
+			var reply LeaveReply
+			ok := srv.Call("ShardMaster.Leave", args, &reply)
+			if ok && reply.WrongLeader == false {
+				return
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
-func (ck *Clerk) Move(shard int, gid int64) {
-  for {
-    // try each known server.
-    for _, srv := range ck.servers {
-      args := &MoveArgs{}
-      args.Shard = shard
-      args.GID = gid
-      var reply LeaveReply
-      ok := call(srv, "ShardMaster.Move", args, &reply)
-      if ok {
-        return
-      }
-    }
-    time.Sleep(100 * time.Millisecond)
-  }
+func (ck *Clerk) Move(shard int, gid int) {
+	args := &MoveArgs{}
+	// Your code here.
+	args.Shard = shard
+	args.GID = gid
+
+	for {
+		// try each known server.
+		for _, srv := range ck.servers {
+			var reply MoveReply
+			ok := srv.Call("ShardMaster.Move", args, &reply)
+			if ok && reply.WrongLeader == false {
+				return
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
