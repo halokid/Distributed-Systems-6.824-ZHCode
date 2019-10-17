@@ -1,7 +1,12 @@
 package mapreduce
 
 import (
+	"encoding/json"
+	"fmt"
 	"hash/fnv"
+	"io/ioutil"
+	"os"
+	"log"
 )
 
 func doMap(
@@ -53,10 +58,52 @@ func doMap(
 	//
 	// Your code here (Part I).
 	//
+
+	///**
+	//os.Exit(2)
+	// 1. 读取文件
+	data, err := ioutil.ReadFile(inFile)
+	CkErr(err, "读取文件错误")
+	if err != nil {
+		return
+	}
+	//os.Exit(1)
+
+	kvResult := mapF(inFile, string(data))
+	//os.Exit(3)
+	fmt.Println("kvRsult长度---------", len(kvResult))
+	//os.Exit(1)
+
+	// 3. 生成临时文件
+	intermediateFiles := make([]*os.File, nReduce)
+	for i := 0; i < nReduce; i++ {
+		intermediateFiles[i], err = os.Create(reduceName(jobName, mapTask, i))
+		if err != nil {
+			log.Fatal("创建临时文件失败...", reduceName(jobName, mapTask, i))
+		}
+	}
+
+	// 4. 循环 keyValue, 归并key到相应的reduce, 使用 json.NewEncoder写入正确的文件
+	for _, kv := range kvResult {
+		enc := json.NewEncoder(intermediateFiles[ihash(kv.Key) % nReduce])
+		err := enc.Encode(&kv)
+		if err != nil {
+			// 写入类似这样 {"Key":"21","Value":""}
+			log.Fatal("重新编码 kv 为json对象失败---", kv)
+		}
+	}
+
+	// 5. 写入操作完成之后， 关闭所有的文件
+	for _, file := range intermediateFiles {
+		file.Close()
+	}
+	//*/
+
 }
 
 func ihash(s string) int {
 	h := fnv.New32a()
 	h.Write([]byte(s))
+	// 0x7fffffff 是 long int 的最大值
 	return int(h.Sum32() & 0x7fffffff)
 }

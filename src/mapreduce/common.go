@@ -41,3 +41,14 @@ func reduceName(jobName string, mapTask int, reduceTask int) string {
 func mergeName(jobName string, reduceTask int) string {
 	return "mrtmp." + jobName + "-res-" + strconv.Itoa(reduceTask)
 }
+
+func CkErr(err error, info ...string) {
+	if err != nil {
+		fmt.Println(info, err)
+	}
+}
+
+
+
+
+

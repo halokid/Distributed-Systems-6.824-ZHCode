@@ -1,5 +1,12 @@
 package mapreduce
 
+import (
+	"configcenter/src/framework/core/log"
+	"encoding/json"
+	"os"
+	"sort"
+)
+
 func doReduce(
 	jobName string, // the name of the whole MapReduce job
 	reduceTask int, // which reduce task this is
@@ -44,4 +51,56 @@ func doReduce(
 	//
 	// Your code here (Part I).
 	//
+
+
+	// 1. 打开所有的临时文件， 把临时文件的内容读入内存
+	keyValues := make(map[string][]string)
+	for i := 0; i < nMap; i++ {
+		file, err := os.Open(reduceName(jobName, i, reduceTask))
+		if err != nil {
+			log.Fatal("打开临时文件失败...", reduceName(jobName, i, reduceTask))
+		}
+
+		var kv KeyValue
+		dec := json.NewDecoder(file)
+		err = dec.Decode(&kv)
+		for err == nil {
+			keyValues[kv.Key] = append(keyValues[kv.Key], kv.Value)
+			err = dec.Decode(&kv)
+		}
+		file.Close()
+	}
+
+	// 2. 按key排序， 就是把key归类
+	var keys []string
+	for k := range keyValues {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// 3. 循环key， 用key去调用 reduceF 函数， 写入输出的内容
+	out, err := os.Create(outFile)
+	if err != nil {
+		log.Fatal("创建输出文件失败", outFile)
+	}
+
+	enc := json.NewEncoder(out)
+	for _, k := range keys {
+		v := reduceF(k, keyValues[k])
+		err = enc.Encode(KeyValue{Key: k, Value: v})
+		if err != nil {
+			log.Fatal("编码失败", KeyValue{Key: k, Value: v})
+		}
+	}
+
+	out.Close()
 }
+
+
+
+
+
+
+
+
+

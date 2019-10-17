@@ -61,8 +61,10 @@ func Sequential(jobName string, files []string, nreduce int,
 	mapF func(string, string) []KeyValue,
 	reduceF func(string, []string) string,
 ) (mr *Master) {
+	fmt.Println("生成一个master用于处理任务的调度， 任务可能是map， 也可能是reduce")
 	mr = newMaster("master")
 	go mr.run(jobName, files, nreduce, func(phase jobPhase) {
+		fmt.Println("执行schedule函数，这次处理的是", phase)
 		switch phase {
 		case mapPhase:
 			for i, f := range mr.files {
@@ -139,6 +141,7 @@ func (mr *Master) run(jobName string, files []string, nreduce int,
 
 	fmt.Printf("%s: Starting Map/Reduce task %s\n", mr.address, mr.jobName)
 
+	fmt.Println("此处跑了两个schedule, 所以会输出两次")
 	schedule(mapPhase)
 	schedule(reducePhase)
 	finish()
