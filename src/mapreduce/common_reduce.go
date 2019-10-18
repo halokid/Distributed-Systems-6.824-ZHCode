@@ -1,7 +1,7 @@
 package mapreduce
 
 import (
-	"configcenter/src/framework/core/log"
+	"log"
 	"encoding/json"
 	"os"
 	"sort"
