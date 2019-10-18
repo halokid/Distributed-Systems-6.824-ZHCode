@@ -24,6 +24,7 @@ const (
 
 // Split in words
 func MapFunc(file string, value string) (res []KeyValue) {
+	// 返回一个文件字符组成的map， 以字符值为key， value为空
 	//debug("Map %v\n", value)
 	words := strings.Fields(value)
 	for _, w := range words {
@@ -100,12 +101,14 @@ func makeInputs(num int) []string {
 	var names []string
 	var i = 0
 	for f := 0; f < num; f++ {
+		// 生产要分析合并的文件内容
 		names = append(names, fmt.Sprintf("824-mrinput-%d.txt", f))
 		file, err := os.Create(names[f])
 		if err != nil {
 			log.Fatal("mkInput: ", err)
 		}
 		w := bufio.NewWriter(file)
+		// 根据输入的num值， 对 nNUmber 分成多少份
 		for i < (f+1)*(nNumber/num) {
 			fmt.Fprintf(w, "%d\n", i)
 			i++
@@ -143,6 +146,7 @@ func cleanup(mr *Master) {
 	}
 }
 
+/**
 func TestSequentialSingle(t *testing.T) {
 	mr := Sequential("test", makeInputs(1), 1, MapFunc, ReduceFunc)
 	mr.Wait()
@@ -150,17 +154,18 @@ func TestSequentialSingle(t *testing.T) {
 	checkWorker(t, mr.stats)
 	cleanup(mr)
 }
+*/
 
 
-/**
+///**
 func TestSequentialMany(t *testing.T) {
 	mr := Sequential("test", makeInputs(5), 3, MapFunc, ReduceFunc)
 	mr.Wait()
 	check(t, mr.files)
 	checkWorker(t, mr.stats)
-	cleanup(mr)
+	//cleanup(mr)
 }
-*/
+//*/
 
 
 func TestParallelBasic(t *testing.T) {

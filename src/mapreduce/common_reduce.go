@@ -87,6 +87,7 @@ func doReduce(
 	enc := json.NewEncoder(out)
 	for _, k := range keys {
 		v := reduceF(k, keyValues[k])
+		debugx("keyValues[", k ,"] 的长度-----", len(keyValues[k]))
 		err = enc.Encode(KeyValue{Key: k, Value: v})
 		if err != nil {
 			log.Fatal("编码失败", KeyValue{Key: k, Value: v})
