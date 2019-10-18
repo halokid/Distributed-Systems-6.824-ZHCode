@@ -108,7 +108,7 @@ func makeInputs(num int) []string {
 			log.Fatal("mkInput: ", err)
 		}
 		w := bufio.NewWriter(file)
-		// 根据输入的num值， 对 nNUmber 分成多少份
+		fmt.Printf("根据输入的num值， 对 nNUmber 分成多少份, nNumber/num : %d/%d\n", nNumber, num)
 		for i < (f+1)*(nNumber/num) {
 			fmt.Fprintf(w, "%d\n", i)
 			i++
@@ -148,6 +148,7 @@ func cleanup(mr *Master) {
 
 /**
 func TestSequentialSingle(t *testing.T) {
+	fmt.Println("100000分成一份读取的文件测试用例")
 	mr := Sequential("test", makeInputs(1), 1, MapFunc, ReduceFunc)
 	mr.Wait()
 	check(t, mr.files)
@@ -159,6 +160,7 @@ func TestSequentialSingle(t *testing.T) {
 
 ///**
 func TestSequentialMany(t *testing.T) {
+	fmt.Println("100000分成五份读取的文件测试用例")
 	mr := Sequential("test", makeInputs(5), 3, MapFunc, ReduceFunc)
 	mr.Wait()
 	check(t, mr.files)

@@ -1,6 +1,7 @@
 package mapreduce
 
 import (
+	"fmt"
 	"log"
 	"encoding/json"
 	"os"
@@ -72,6 +73,7 @@ func doReduce(
 	}
 
 	// 2. 按key排序， 就是把key归类
+	fmt.Println("这按照map的个数归类好的排序汇总起来，再来一次总的排序, 输出到临时的文件是", outFile)
 	var keys []string
 	for k := range keyValues {
 		keys = append(keys, k)
@@ -87,7 +89,8 @@ func doReduce(
 	enc := json.NewEncoder(out)
 	for _, k := range keys {
 		v := reduceF(k, keyValues[k])
-		debugx("keyValues[", k ,"] 的长度-----", len(keyValues[k]))
+		//debugx("keyValues[", k ,"] 的长度-----", len(keyValues[k]))
+		fmt.Println("keyValues[", k ,"] 的长度-----", len(keyValues[k]))
 		err = enc.Encode(KeyValue{Key: k, Value: v})
 		if err != nil {
 			log.Fatal("编码失败", KeyValue{Key: k, Value: v})

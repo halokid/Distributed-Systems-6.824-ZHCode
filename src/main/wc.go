@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"mapreduce"
 	"os"
+	"strconv"
+	"strings"
+	"unicode"
 )
 
 //
@@ -15,6 +19,20 @@ import (
 //
 func mapF(filename string, contents string) []mapreduce.KeyValue {
 	// Your code here (Part II).
+	wordList := strings.FieldsFunc(contents, func(c rune) bool {
+		return !unicode.IsLetter(c)
+	})
+
+	retMap := make(map[string]int)
+	for _, word := range wordList {
+		retMap[word]++
+	}
+
+	var res []mapreduce.KeyValue
+	for k, v := range retMap {
+		res = append(res, mapreduce.KeyValue{Key: k, Value: strconv.Itoa(v)})
+	}
+	return res
 }
 
 //
@@ -24,6 +42,16 @@ func mapF(filename string, contents string) []mapreduce.KeyValue {
 //
 func reduceF(key string, values []string) string {
 	// Your code here (Part II).
+	total := 0
+	for _, cnt := range values {
+		cur, err := strconv.Atoi(cnt)
+		if err != nil {
+			log.Fatal("转换value成int类型失败", cnt)
+		}
+		total += cur
+	}
+	// 返回一共有多少个单词
+	return strconv.Itoa(total)
 }
 
 // Can be run in 3 ways:

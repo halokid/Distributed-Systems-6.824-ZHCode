@@ -67,10 +67,12 @@ func Sequential(jobName string, files []string, nreduce int,
 		fmt.Println("执行schedule函数，这次处理的是", phase)
 		switch phase {
 		case mapPhase:
+			fmt.Println("map分成几份，也就是切割成几份files， 这里就执行几次循环,这里是 ---", len(files))
 			for i, f := range mr.files {
 				doMap(mr.jobName, i, f, mr.nReduce, mapF)
 			}
 		case reducePhase:
+			fmt.Println("nreduce多少，也就是说归类的类别有多少，这里就循环几次，这里是--", nreduce)
 			for i := 0; i < mr.nReduce; i++ {
 				doReduce(mr.jobName, i, mergeName(mr.jobName, i), len(mr.files), reduceF)
 			}
