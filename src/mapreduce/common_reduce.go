@@ -65,6 +65,9 @@ func doReduce(
 		var kv KeyValue
 		dec := json.NewDecoder(file)
 		err = dec.Decode(&kv)
+		fmt.Println("&kv -----------", kv)
+		fmt.Println("len(&kv) -----------", len(kv))
+		fmt.Println("reduce开始合并每个map里面统计好的key值value合集， keyValues[key] 得到的是一个slice")
 		for err == nil {
 			keyValues[kv.Key] = append(keyValues[kv.Key], kv.Value)
 			err = dec.Decode(&kv)
