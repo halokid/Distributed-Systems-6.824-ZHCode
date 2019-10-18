@@ -70,6 +70,7 @@ func doReduce(
 		for err == nil {
 			keyValues[kv.Key] = append(keyValues[kv.Key], kv.Value)
 			err = dec.Decode(&kv)
+			fmt.Println("&kv -----------", kv)
 		}
 		file.Close()
 	}
