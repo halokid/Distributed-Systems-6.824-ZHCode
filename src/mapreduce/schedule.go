@@ -55,6 +55,7 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 
 	go func() {
 		for {
+			// 假如woker挂了, 就会超时
 			// 假如有收到超时的任务（channel通道传输数据）， 则重试
 			idx := <-timeoutCh
 			availWokers := <-registerChan
