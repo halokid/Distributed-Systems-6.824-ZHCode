@@ -37,12 +37,32 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 	wg := sync.WaitGroup{}
 	wg.Add(ntasks)
 	timeoutCh := make(chan int, ntasks)
-	snedTaskToWorker := func(addr string, idx int) {
+	sendTaskToWorker := func(addr string, idx int) {
 		args := DoTaskArgs{JobName: jobName, File: mapFiles[idx], Phase: phase, TaskNumber: idx, NumOtherPhase: n_other}
 		done := call(addr, "Worker.DoTask", args, nil)
-
+		if done {
+			wg.Done()
+		} else {
+			timeoutCh <-idx
+		}
+		registerChan <-addr
 	}
 
+	for i := 0; i < ntasks; i++ {
+		availWorker := <-registerChan
+		go sendTaskToWorker(availWorker, i)
+	}
+
+	go func() {
+		for {
+			// 假如有收到超时的任务（channel通道传输数据）， 则重试
+			idx := <-timeoutCh
+			availWokers := <-registerChan
+			go sendTaskToWorker(availWokers, idx)
+		}
+	}()
+
+	wg.Wait()
 	fmt.Printf("Schedule: %v done\n", phase)
 }
 
