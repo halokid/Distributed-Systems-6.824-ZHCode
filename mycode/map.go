@@ -2,13 +2,14 @@ package main
 
 import (
   "encoding/json"
+  "fmt"
   "io/ioutil"
   "log"
   "os"
 )
 
 
-func doMap(
+func DoMap(
   jobName string,     // the name of the  MapReduce job
   mapTaskName int,    // which map task this is
   inFile string,
@@ -28,8 +29,11 @@ func doMap(
   tmpFiles := make([] *os.File, nReduce)
   encoders := make([] *json.Encoder, nReduce)
 
+  fmt.Println("nReduce --------------", nReduce)
   for i := 0; i < nReduce; i++ {
+    fmt.Println("loop i --------------", i)
     tmpFileName := ReduceName(jobName, mapTaskName, i)
+    fmt.Println("tmpFileName ------------", tmpFileName)
     tmpFiles[i], err = os.Create(tmpFileName)
     if err != nil {
       log.Fatal(err)
@@ -41,9 +45,20 @@ func doMap(
       log.Fatal(err)
     }
   }
+  fmt.Println("--------------------------------------")
 
   for _, kv := range kvResult {
-    hasKey := int()
+    /**
+    把数字作为key， 根据nReduce的值算出每个key应该分布的 分割区块键值， 就是按照每个key的值均匀分到分割的哪个
+    文件去的算法
+     */
+    hasKey := int(Ihash(kv.Key)) % nReduce
+    fmt.Println("hasKey ---------------", hasKey)
+    fmt.Println("kv.Key ---------------", kv.Key)
+    err := encoders[hasKey].Encode(&kv)
+    if err != nil {
+      log.Fatal("把map的内容编码系列化成json失败", err)
+    }
   }
 }
 
