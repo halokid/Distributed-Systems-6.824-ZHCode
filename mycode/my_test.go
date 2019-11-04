@@ -2,6 +2,7 @@ package main
 
 import (
   "fmt"
+  "github.com/spf13/cast"
   "testing"
 )
 
@@ -27,11 +28,11 @@ func TestMakeInput(t *testing.T) {
 }
 
 func TestDoMap(t *testing.T) {
-  return
+  //return
   files := MakeInput(2)
   for i, f := range files {
     //DoMap("testjob", i, f,1, MapFunc)
-    DoMap("testjob", i, f,2, MapFunc)
+    DoMap("testjob", i, f,4, MapFunc)
   }
 }
 
@@ -40,8 +41,10 @@ func TestReduceFile(t *testing.T) {
   测试一堆数字（或者其他字符也可以），均匀分配到几个区块（几个文件， 几个列表等都可以, 这里的实例是文件）的算法
   */
   nReduce := 4        // 4个区块
-  for i := 0; i < 1000; i++ {
-    hasKey := int(Ihash(i)) % nReduce
+  // 把100个数字按照 4 个区块来划分
+  for i := 0; i < 100; i++ {
+    hasKey := int(Ihash(cast.ToString(i))) % nReduce
+    fmt.Println("hasKey :", i, "---", hasKey)
   }
 }
 
