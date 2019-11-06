@@ -2,6 +2,7 @@ package main
 
 import (
   "encoding/json"
+  "fmt"
   "log"
   "os"
   "sort"
@@ -19,6 +20,7 @@ func DoRecduce(
 
   for i := 0; i < nMap; i++ {
     fileName := ReduceName(jobName, i, reduceTaskNumber)
+    fmt.Println("reduce 文件 fileName ----------- ", fileName)
     file, err := os.Open(fileName)
     if err != nil {
       log.Fatal("doReduce 1: 打开map切割的文件失败: ", err)
@@ -58,7 +60,20 @@ func DoRecduce(
     log.Fatal("doReduce 2: 生成文件失败", err)
   }
   enc := json.NewEncoder(file)
+
+  // step 4: 为每个key调用用户指定的reduce
+  for _, k := range keys {
+    // 只是输出一下Reduce传值
+    res := reduceF(k, kvs[k])
+    enc.Encode(KeyValue{k, res})
+  }
+
+  // close file
+  file.Close()
 }
+
+
+
 
 
 
