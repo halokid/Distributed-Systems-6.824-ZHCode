@@ -19,6 +19,14 @@ func DoRecduce(
   kvs := make(map[string][]string)
 
   for i := 0; i < nMap; i++ {
+    /**
+    聚合同一个 nMap 区块号码的文件数据， 比如 nMap 是1， 则聚合  mrtmp.testjob-0-0, mrtmp.testjob-1-0， 两个
+    文件, reduce是针对不同的map区块来进行合并的
+
+    注意两个概念：
+    nMap        是有多少个数据文件
+    nReduce     是把每个数据文件分成多少区块
+     */
     fileName := ReduceName(jobName, i, reduceTaskNumber)
     fmt.Println("reduce 文件 fileName ----------- ", fileName)
     file, err := os.Open(fileName)

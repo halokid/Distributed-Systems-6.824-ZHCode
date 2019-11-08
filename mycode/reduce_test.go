@@ -19,6 +19,11 @@ nReduce 是 4， 所以下面 循环 小于4，  nReduce代表要起几个 reduc
 
 func TestDoRecduce(t *testing.T) {
   for i := 0; i < 4; i++ {
+    /**
+    当 i 为 0 时：  整合 两个map文件的  第一个区块
+    当 i 为 1 时：  整合 两个map文件的  第二个区块
+    如此类推
+     */
     DoRecduce("testjob", i, 2, ReduceFunc)
   }
 }
