@@ -86,6 +86,7 @@ func make_config(t *testing.T, n int, unreliable bool) *config {
 		cfg.start1(i)
 	}
 
+	fmt.Println("fixme:  run 1 ---------------------")
 	// connect everyone
 	for i := 0; i < cfg.n; i++ {
 		cfg.connect(i)
@@ -300,8 +301,10 @@ func (cfg *config) checkOneLeader() int {
 		ms := 450 + (rand.Int63() % 100)
 		time.Sleep(time.Duration(ms) * time.Millisecond)
 
+		fmt.Println("fixme: cfg.n -----------------", cfg.n)
 		leaders := make(map[int][]int)
 		for i := 0; i < cfg.n; i++ {
+			// fixme: 没有 connected 成功
 			if cfg.connected[i] {
 				if term, leader := cfg.rafts[i].GetState(); leader {
 					leaders[term] = append(leaders[term], i)
@@ -318,7 +321,8 @@ func (cfg *config) checkOneLeader() int {
 				lastTermWithLeader = term
 			}
 		}
-
+		// fixme: 异常发生在，  leaders的长度永远为0
+		fmt.Println("fixme: len(leaders) -----------------", len(leaders))
 		if len(leaders) != 0 {
 			return leaders[lastTermWithLeader][0]
 		}
