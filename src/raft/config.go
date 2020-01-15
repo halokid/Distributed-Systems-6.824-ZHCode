@@ -91,6 +91,7 @@ func make_config(t *testing.T, n int, unreliable bool) *config {
 	for i := 0; i < cfg.n; i++ {
 		cfg.connect(i)
 	}
+	fmt.Println("fixme:  run 2 ---------------------")
 
 	return cfg
 }
@@ -304,8 +305,9 @@ func (cfg *config) checkOneLeader() int {
 		fmt.Println("fixme: cfg.n -----------------", cfg.n)
 		leaders := make(map[int][]int)
 		for i := 0; i < cfg.n; i++ {
-			// fixme: 没有 connected 成功
 			if cfg.connected[i] {
+				fmt.Println("fixme: run 3 ---------------")
+				// fixme: GetState  不成功
 				if term, leader := cfg.rafts[i].GetState(); leader {
 					leaders[term] = append(leaders[term], i)
 				}
