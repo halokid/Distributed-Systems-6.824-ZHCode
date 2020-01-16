@@ -168,6 +168,7 @@ func (cfg *config) start1(i int) {
 	// listen to messages from Raft indicating newly committed messages.
 	applyCh := make(chan ApplyMsg)
 	go func() {
+		// fixme: 起一个协程阻塞监听 raft节点 提交的新的消息
 		for m := range applyCh {
 			err_msg := ""
 			if m.CommandValid == false {
@@ -183,6 +184,7 @@ func (cfg *config) start1(i int) {
 				}
 				_, prevok := cfg.logs[i][m.CommandIndex-1]
 				cfg.logs[i][m.CommandIndex] = v
+				// 如果节点收到的的日志条目索引比自身的大， 则更新自身的
 				if m.CommandIndex > cfg.maxIndex {
 					cfg.maxIndex = m.CommandIndex
 				}

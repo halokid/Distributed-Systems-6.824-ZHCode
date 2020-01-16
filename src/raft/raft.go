@@ -17,13 +17,41 @@ package raft
 //   in the same server.
 //
 
-import "sync"
+import (
+	"bytes"
+	"labgob"
+	"log"
+	"sync"
+	"time"
+)
 import "labrpc"
 
 // import "bytes"
 // import "labgob"
 
 
+type ApplyMsg struct {
+	CommandValid 			bool
+	Command 					interface{}
+	CommandIndex 			int
+	SnapShot 					[]byte
+}
+
+type State int
+
+// 定义三种角色
+const (
+	Follower 				State = iota		// value ---> 0
+	Candidate												// value ---> 1
+	Leader													// value ---> 2
+)
+
+const NULL int = -1
+
+type Log struct {
+	Term 			int						"节点收到leader传过来某一期条目"
+	Command 	interface{}		"状态机的指令"
+}
 
 //
 // as each Raft peer becomes aware that successive log entries are
@@ -36,11 +64,7 @@ import "labrpc"
 // snapshots) on the applyCh; at that point you can add fields to
 // ApplyMsg, but set CommandValid to false for these other uses.
 //
-type ApplyMsg struct {
-	CommandValid bool
-	Command      interface{}
-	CommandIndex int
-}
+
 
 //
 // A Go object implementing a single Raft peer.
@@ -55,10 +79,31 @@ type Raft struct {
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
 
+	state 				State
+	currentTerm		int			"服务器传过来的最后一个条目， 初始化为0， 单次递增"
+	votedFor 			int			"候选人在当前这一期收到的投票， 如果没有收到其他peer的投票就是null"
+	log 					[]Log
+
+	lastIncludedIndex		int
+	lastIncludeTerm 		int
+
+	commitIndex 				int
+	lastApplied 				int
+
+	nextIndex 					[]int
+	matchIndex 					[]int
+
+	applyCh 						chan ApplyMsg
+	killCh 							chan bool
+
+	voteCh 							chan bool
+	appendLogCh 				chan bool
 }
 
 // return currentTerm and whether this server
 // believes it is the leader.
+
+/**
 func (rf *Raft) GetState() (int, bool) {
 
 	var term int
@@ -66,6 +111,20 @@ func (rf *Raft) GetState() (int, bool) {
 	// Your code here (2A).
 	return term, isleader
 }
+*/
+
+func (rf *Raft) GetState() (int, bool) {
+	var term int
+	var isleader bool
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	term = rf.currentTerm
+	isleader = rf.state == Leader
+	return term, isleader
+}
+
+
+
 
 
 //
@@ -73,21 +132,22 @@ func (rf *Raft) GetState() (int, bool) {
 // where it can later be retrieved after a crash and restart.
 // see paper's Figure 2 for a description of what should be persistent.
 //
-func (rf *Raft) persist() {
-	// Your code here (2C).
-	// Example:
-	// w := new(bytes.Buffer)
-	// e := labgob.NewEncoder(w)
-	// e.Encode(rf.xxx)
-	// e.Encode(rf.yyy)
-	// data := w.Bytes()
-	// rf.persister.SaveRaftState(data)
+func (rf *Raft) persist() []byte {
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	e.Encode(rf.currentTerm)
+	e.Encode(rf.votedFor)
+	e.Encode(rf.log)
+	e.Encode(rf.lastIncludedIndex)
+	e.Encode(rf.lastIncludeTerm)
+	return w.Bytes()
 }
 
 
 //
 // restore previously persisted state.
 //
+/**
 func (rf *Raft) readPersist(data []byte) {
 	if data == nil || len(data) < 1 { // bootstrap without any state?
 		return
@@ -106,6 +166,35 @@ func (rf *Raft) readPersist(data []byte) {
 	//   rf.yyy = yyy
 	// }
 }
+*/
+
+func (rf *Raft) readPersist(data []byte) {
+	// 从状态机持久化的存储的数据中恢复之前的状态
+	if data == nil || len(data) < 1 {
+		return
+	}
+
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+	var currentTerm int
+	var voteFor int
+	var clog []Log
+	var lastIncludedIndex int
+	var lastIncludedTerm int
+
+	if d.Decode(&currentTerm) != nil || d.Decode(&voteFor) != nil || d.Decode(&clog) != nil ||
+		d.Decode(&lastIncludedIndex) != nil || d.Decode(&lastIncludedTerm) != nil {
+		log.Fatalf("从服务器读取持久化储存错误, %v", rf.me)
+	} else {
+		rf.mu.Lock()
+		rf.currentTerm, rf.votedFor, rf.log = currentTerm, voteFor, clog
+		rf.lastIncludeTerm, rf.lastIncludedIndex = lastIncludedTerm, lastIncludedIndex
+		rf.commitIndex, rf.lastApplied = rf.lastIncludedIndex, rf.lastIncludedIndex
+		rf.mu.Unlock()
+	}
+
+}
+
 
 
 
@@ -214,6 +303,8 @@ func (rf *Raft) Kill() {
 // Make() must return quickly, so it should start goroutines
 // for any long-running work.
 //
+
+/**
 func Make(peers []*labrpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
 	rf := &Raft{}
@@ -229,3 +320,49 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	return rf
 }
+*/
+
+func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan ApplyMsg) *Raft {
+	rf := &Raft{}
+	rf.peers = peers
+	rf.persister = persister
+	rf.me = me
+
+	rf.state = Follower				//  一开始服务启动的时候，都是 Follower
+	rf.currentTerm = 0
+	rf.votedFor = NULL
+	rf.log = make([]Log, 1)			// 一开始的索引值为1
+
+	rf.commitIndex = 0
+	rf.lastApplied = 0
+
+	rf.applyCh = applyCh
+	rf.voteCh = make(chan bool, 1)			// 为了避免阻塞该 ch， 设置的 1 buff
+	rf.appendLogCh = make(chan bool, 1)
+	rf.killCh = make(chan bool, 1)
+
+	rf.readPersist(persister.ReadRaftState())			// fixme: fuck
+
+	// 领导者每秒发送不超过10次心跳， 这个是发送心跳的间隔时间
+	heartbeatTime := time.Duration(100) * time.Millisecond
+
+	// 需要定期的做一些动作
+	go func() {
+		for {
+			select {
+
+			}
+		}
+	}()
+}
+
+
+
+
+
+
+
+
+
+
+

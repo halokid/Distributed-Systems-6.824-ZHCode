@@ -1,6 +1,10 @@
 package raft
 
-import "testing"
+/**
+import (
+  "testing"
+)
+
 
 func TestC1(t *testing.T) {
   //m := make(map[int]int, 0)
@@ -17,3 +21,15 @@ func TestC1(t *testing.T) {
   t.Log(len(s))
   t.Log(cap(s))
 }
+
+func TestMakeConfig(t *testing.T) {
+  servers := 3
+  cfg := make_config(t, servers, false)
+  t.Log("+v%\n", cfg)
+}
+
+func TestComm(t *testing.T) {
+  t.Log(Leader)
+}
+
+*/
