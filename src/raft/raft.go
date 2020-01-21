@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"labgob"
 	"log"
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -132,7 +133,11 @@ func (rf *Raft) GetState() (int, bool) {
 // where it can later be retrieved after a crash and restart.
 // see paper's Figure 2 for a description of what should be persistent.
 //
-func (rf *Raft) persist() []byte {
+func (rf *Raft) persist() {
+	rf.persister.SaveRaftState(rf.encodeRaftState())
+}
+
+func (rf *Raft) encodeRaftState() []byte {
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
 	e.Encode(rf.currentTerm)
@@ -205,6 +210,10 @@ func (rf *Raft) readPersist(data []byte) {
 //
 type RequestVoteArgs struct {
 	// Your data here (2A, 2B).
+	Term 							int "candidate's term"
+	CandidateId 			int "candidate requesting vote"
+	LastLogIndex 			int "index of candidate last log entry"
+	LastLogTerm 			int "term of candidate last log entry"
 }
 
 //
@@ -349,15 +358,71 @@ func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan 
 	// 需要定期的做一些动作
 	go func() {
 		for {
+			// 监听退出的ch
 			select {
+			case <-rf.killCh:
+				return
+			default:
 
+			}
+			electionTime := time.Duration(rand.Intn(200) + 300) * time.Millisecond
+
+			rf.mu.Lock()
+			state := rf.state
+			rf.mu.Unlock()
+
+			// 监听状态的ch
+			switch state {
+			case Follower, Candidate:
+				select {
+				case <-rf.voteCh:
+				case <-rf.appendLogCh:
+				case <-time.After(electionTime):			// 如果超过了选举时间
+					rf.mu.Lock()
+					rf.be
+				}
 			}
 		}
 	}()
 }
 
+func (rf *Raft) beCandidate() {
+	// 成为一个候选人
+	rf.state = Candidate
+	rf.currentTerm++
+	rf.votedFor = rf.me
+	// 持久化目前候选人身份的数据信息
+	rf.persist()
+	// 因为如果选举超时已经过去了，而没有给候选人投票，那么醒醒吧
+	go rf.startElection()
+}
+
+func (rf *Raft) startElection() {
+	rf.mu.Lock()
+	args := RequestVoteArgs{
+		Term:  rf.currentTerm,
+		CandidateId:  rf.me,
+		LastLogIndex:  rf.
+	}
+}
 
 
+func send(ch chan bool) {
+	select {
+	case <-ch:
+	default:
+
+	}
+	ch <-true
+}
+
+func (rf *Raft) LogLen() int {
+	return len(rf.log) + rf.lastIncludedIndex
+}
+
+func (rf *Raft) getLastLogIdx() int {
+	return rf.LogLen() - 1
+}
 
 
 
