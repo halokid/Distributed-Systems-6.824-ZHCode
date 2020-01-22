@@ -23,6 +23,7 @@ import (
 	"log"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 import "labrpc"
@@ -222,6 +223,8 @@ type RequestVoteArgs struct {
 //
 type RequestVoteReply struct {
 	// Your data here (2A).
+	Term 						int  "currentTerm, for candidate to update itself"
+	VoteGranted			bool "true means candidate received vote"
 }
 
 //
@@ -402,7 +405,40 @@ func (rf *Raft) startElection() {
 	args := RequestVoteArgs{
 		Term:  rf.currentTerm,
 		CandidateId:  rf.me,
-		LastLogIndex:  rf.
+		LastLogIndex:  rf.getLastLogIdx(),
+		LastLogTerm:  rf.getLastLogTerm(),
+	}
+	rf.mu.Unlock()
+	var votes int32 = 1
+	for i := 0; i < len(rf.peers); i++ {
+		if i == rf.me {
+			continue
+		}
+		go func(idx int) {
+			reply := &RequestVoteReply{}
+			ret := rf.sendRequestVote(idx, &args, reply)
+
+			if ret {
+				rf.mu.Lock()
+				defer rf.mu.Unlock()
+				if reply.Term > rf.currentTerm {
+					rf.beFollower(reply.Term)
+					return
+				}
+				if rf.state != Candidate || rf.currentTerm != args.Term {
+					// fixme: ?? 这里不理解
+					return
+				}
+				if reply.VoteGranted {
+					atomic.AddInt32(&votes, 1)
+				}
+				// 如果获得超过一半的服务器的投票， 则变为领导者
+				if atomic.LoadInt32(&votes) > int32(len(rf.peers) / 2) {
+					rf.beLeader()
+					rf.startAppendLog()
+				}
+			}
+		}()
 	}
 }
 
@@ -424,6 +460,65 @@ func (rf *Raft) getLastLogIdx() int {
 	return rf.LogLen() - 1
 }
 
+func (rf *Raft) getLastLogTerm() int {
+	idx := rf.getLastLogIdx()
+	if idx < rf.lastIncludedIndex {
+		return -1
+	}
+	return rf.getLog(idx).Term
+}
+
+func (rf *Raft) getLog(i int) Log {
+	return rf.log[i - rf.lastIncludedIndex]
+}
+
+// follower的逻辑部分
+func (rf * Raft) beFollower(term int) {
+	rf.state = Follower
+	rf.votedFor = NULL
+	rf.currentTerm = term
+	rf.persist()
+}
+
+func (rf *Raft) beLeader() {
+	if rf.state != Candidate {
+		return
+	}
+	rf.state = Leader
+	// 初始化leader的数据
+	rf.nextIndex = make([]int, len(rf.peers))
+	rf.matchIndex = make([]int, len(rf.peers))
+	for i := 0; i < len(rf.nextIndex); i++ {
+		// 循环初始化每一个peer的 "下一个日志条目的索引值" 为领导者的  "lastIncludedIndex" 也就是 “日志条目索引值”
+		rf.nextIndex[i] = rf.getLastLogIdx() + 1
+	}
+}
+
+// 领导者的逻辑部分
+func (rf *Raft) startAppendLog() {
+	for i := 0; i < len(rf.peers); i++ {
+		if i == rf.me {
+			continue
+		}
+		go func(idx int) {
+			for {
+				rf.mu.Lock()
+				if rf.state != Leader {
+					rf.mu.Unlock()
+					return
+				}
+
+				if rf.nextIndex[idx] - rf.lastIncludedIndex < 1 {
+					rf.
+				}
+			}
+		}()
+	}
+}
+
+func (rf *Raft) sendSnapshot(server int) {
+
+}
 
 
 
